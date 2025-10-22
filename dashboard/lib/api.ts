@@ -3,6 +3,12 @@ import axios from 'axios';
 // Backend API URL - set via NEXT_PUBLIC_BACKEND_URL environment variable
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
+// Debug: Log the backend URL being used
+if (typeof window !== 'undefined') {
+  console.log('🔍 Backend URL:', BACKEND_URL);
+  console.log('🔍 Environment:', process.env.NEXT_PUBLIC_BACKEND_URL);
+}
+
 const api = axios.create({
   baseURL: BACKEND_URL,
   timeout: 60000,
