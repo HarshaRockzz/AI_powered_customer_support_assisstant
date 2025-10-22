@@ -1,10 +1,5 @@
 # 🚀 AI-Powered Customer Support Assistant
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-![AI Customer Support](https://img.shields.io/badge/AI-Powered-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-production--ready-success)
 
 ## ✨ Features
 
@@ -18,7 +13,6 @@
 
 ## 🌐 Live Demo
 
-**Coming soon after your deployment!**
 
 ## 🛠️ Tech Stack
 
@@ -283,10 +277,6 @@ open http://localhost:3000
 - **Qdrant Cloud**: $25/month (5GB)
 - **Total: ~$63/month** for production-grade
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -298,18 +288,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Qdrant](https://qdrant.tech) - Vector database
 - [Render.com](https://render.com) - Deployment platform
 - [LangChain](https://langchain.com) - RAG framework
-
-## 📧 Contact
-
-**Built with ❤️ by [Harshavardhan Mamidipaka](https://github.com/HarshaRockzz)**
-
-- 🌐 Portfolio: https://harshavardhan-mamidipaka.vercel.app/
-- 💼 LinkedIn: https://www.linkedin.com/in/mamidipaka-harshavardhan/
-- 📧 Email: mamidipaka2003@gmail.com
-
----
-
-⭐ **Star this repo if you find it useful!** ⭐
-
-**Show this in your portfolio to impress FAANG recruiters!** 🚀
-
