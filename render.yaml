@@ -1,0 +1,123 @@
+# Render.com Blueprint for AI Customer Support Assistant
+# This file defines all services needed for deployment
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: ai-support-postgres
+    env: docker
+    dockerfilePath: ./Dockerfile.postgres
+    envVars:
+      - key: POSTGRES_USER
+        value: ai_support
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: ai_support_db
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Redis Cache
+  - type: pserv
+    name: ai-support-redis
+    env: docker
+    dockerfilePath: ./Dockerfile.redis
+    disk:
+      name: redis-data
+      mountPath: /data
+      sizeGB: 1
+
+  # Qdrant Vector Database
+  - type: pserv
+    name: ai-support-qdrant
+    env: docker
+    dockerfilePath: ./Dockerfile.qdrant
+    disk:
+      name: qdrant-data
+      mountPath: /qdrant/storage
+      sizeGB: 1
+
+  # Python RAG Service
+  - type: web
+    name: ai-support-rag
+    env: docker
+    dockerfilePath: ./Dockerfile.rag
+    dockerContext: ./
+    envVars:
+      - key: LLM_PROVIDER
+        value: groq
+      - key: EMBEDDING_PROVIDER
+        value: huggingface
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: HF_EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: VECTOR_DB
+        value: qdrant
+      - key: QDRANT_URL
+        fromService:
+          type: pserv
+          name: ai-support-qdrant
+          property: hostport
+      - key: QDRANT_COLLECTION_NAME
+        value: customer_support_docs
+      - key: RAG_SERVICE_PORT
+        value: 8000
+
+  # Go Backend API
+  - type: web
+    name: ai-support-backend
+    env: docker
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: ./
+    envVars:
+      - key: SERVER_PORT
+        value: 8080
+      - key: RAG_SERVICE_URL
+        fromService:
+          type: web
+          name: ai-support-rag
+          property: host
+      - key: POSTGRES_HOST
+        fromService:
+          type: pserv
+          name: ai-support-postgres
+          property: host
+      - key: POSTGRES_PORT
+        value: 5432
+      - key: POSTGRES_USER
+        value: ai_support
+      - key: POSTGRES_PASSWORD
+        fromService:
+          type: pserv
+          name: ai-support-postgres
+          envVarKey: POSTGRES_PASSWORD
+      - key: POSTGRES_DB
+        value: ai_support_db
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: ai-support-redis
+          property: host
+      - key: REDIS_PORT
+        value: 6379
+
+  # Next.js Dashboard
+  - type: web
+    name: ai-support-dashboard
+    env: docker
+    dockerfilePath: ./Dockerfile.dashboard
+    dockerContext: ./
+    envVars:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        fromService:
+          type: web
+          name: ai-support-backend
+          property: host
+      - key: PORT
+        value: 3000
+

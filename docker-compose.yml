@@ -1,0 +1,209 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_support_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ai_support_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_support}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - ai_support_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_support_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ai_support_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai_support_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai_support_qdrant
+    ports:
+      - "6335:6333"
+      - "6336:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ai_support_network
+
+  # Go Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: ai_support_backend
+    environment:
+      - BACKEND_PORT=8080
+      - GO_ENV=${GO_ENV:-production}
+      - POSTGRES_URL=postgres://${POSTGRES_USER:-ai_support_user}:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/${POSTGRES_DB:-ai_support}?sslmode=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - RAG_SERVICE_URL=http://rag_service:8000
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      - CACHE_TTL=${CACHE_TTL:-3600}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rag_service:
+        condition: service_started
+    networks:
+      - ai_support_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Python RAG Service
+  rag_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.rag
+    container_name: ai_support_rag
+    environment:
+      # LLM Provider Selection
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
+      
+      # OpenAI (optional)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      
+      # Groq (FREE)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.1-70b-versatile}
+      
+      # HuggingFace (FREE)
+      - HF_EMBEDDING_MODEL=${HF_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      
+      # Ollama (LOCAL)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+      
+      # Vector DB
+      - VECTOR_DB=${VECTOR_DB:-qdrant}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-customer_support_docs}
+      - PINECONE_API_KEY=${PINECONE_API_KEY:-}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-}
+      
+      - RAG_SERVICE_PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+    networks:
+      - ai_support_network
+    volumes:
+      - rag_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: ai_support_dashboard
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+      - BACKEND_URL=http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - ai_support_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai_support_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - ai_support_network
+    depends_on:
+      - backend
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai_support_grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - ai_support_network
+    depends_on:
+      - prometheus
+
+networks:
+  ai_support_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  rag_uploads:
+  prometheus_data:
+  grafana_data:
+

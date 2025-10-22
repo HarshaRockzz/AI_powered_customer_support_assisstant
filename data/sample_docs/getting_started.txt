@@ -1,0 +1,89 @@
+Getting Started with Our Platform
+=================================
+
+Welcome! This guide will help you get started with our platform quickly and easily.
+
+## Table of Contents
+1. Creating Your Account
+2. Setting Up Your Profile
+3. Basic Features
+4. Getting Help
+
+## 1. Creating Your Account
+
+To create an account:
+- Visit our homepage at www.example.com
+- Click "Sign Up" in the top right corner
+- Enter your email address and create a password
+- Verify your email address
+- Complete your profile information
+
+## 2. Setting Up Your Profile
+
+After creating your account:
+- Add your profile photo
+- Fill in your basic information
+- Set your preferences
+- Configure notification settings
+
+## 3. Basic Features
+
+Our platform offers:
+
+### Dashboard
+Your central hub for all activities. Access it anytime by clicking the home icon.
+
+### Projects
+Create and manage your projects easily. Click "New Project" to get started.
+
+### Collaboration
+Invite team members and collaborate in real-time.
+
+### Analytics
+Track your progress with detailed analytics and reports.
+
+## 4. Getting Help
+
+Need assistance?
+- Check our FAQ section
+- Contact support at support@example.com
+- Join our community forum
+- Schedule a demo with our team
+
+## Business Hours
+
+We're available:
+- Monday to Friday: 9 AM - 5 PM EST
+- Weekends: Closed
+- Holidays: Closed
+
+## Quick Tips
+
+- Use keyboard shortcuts to navigate faster
+- Enable two-factor authentication for security
+- Regularly backup your data
+- Explore our integrations for enhanced productivity
+
+## Common Questions
+
+Q: How do I reset my password?
+A: Click "Forgot Password" on the login page and follow the instructions.
+
+Q: Can I upgrade my plan?
+A: Yes! Go to Settings > Billing > Change Plan.
+
+Q: Is there a mobile app?
+A: Yes, available on iOS and Android.
+
+Q: How do I export my data?
+A: Settings > Data Export > Choose format (CSV/JSON).
+
+## Next Steps
+
+1. Complete your profile
+2. Create your first project
+3. Invite team members
+4. Explore advanced features
+
+Thank you for choosing our platform!
+
