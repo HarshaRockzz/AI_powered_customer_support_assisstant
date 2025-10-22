@@ -99,6 +99,12 @@ func Metrics() gin.HandlerFunc {
 // RateLimiter middleware for rate limiting
 func RateLimiter(requestsPerWindow int, windowSeconds int) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip rate limiting if Redis is not initialized
+		if cache.Client == nil {
+			c.Next()
+			return
+		}
+
 		clientIP := c.ClientIP()
 		key := fmt.Sprintf("ratelimit:%s", clientIP)
 		ctx := context.Background()
@@ -106,7 +112,7 @@ func RateLimiter(requestsPerWindow int, windowSeconds int) gin.HandlerFunc {
 		// Check if key exists
 		exists, err := cache.Exists(ctx, key)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to check rate limit key")
+			logrus.WithError(err).Debug("Failed to check rate limit key, skipping")
 			c.Next()
 			return
 		}
@@ -114,7 +120,7 @@ func RateLimiter(requestsPerWindow int, windowSeconds int) gin.HandlerFunc {
 		if !exists {
 			// First request in window
 			if err := cache.Set(ctx, key, 1, time.Duration(windowSeconds)*time.Second); err != nil {
-				logrus.WithError(err).Error("Failed to set rate limit")
+				logrus.WithError(err).Debug("Failed to set rate limit, skipping")
 				c.Next()
 				return
 			}
@@ -125,7 +131,7 @@ func RateLimiter(requestsPerWindow int, windowSeconds int) gin.HandlerFunc {
 		// Increment counter
 		count, err := cache.Increment(ctx, key)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to increment rate limit")
+			logrus.WithError(err).Debug("Failed to increment rate limit, skipping")
 			c.Next()
 			return
 		}
