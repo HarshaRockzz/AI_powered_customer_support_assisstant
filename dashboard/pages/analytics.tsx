@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '@/components/Layout';
+import Layout from '../components/Layout';
 import { 
   ChatBubbleOvalLeftEllipsisIcon,
   HandThumbUpIcon,
@@ -9,9 +9,9 @@ import {
   UserGroupIcon,
   BoltIcon
 } from '@heroicons/react/24/outline';
-import StatsCard from '@/components/StatsCard';
-import { getAnalytics, getTopQueries, getQueryTrends } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
+import StatsCard from '../components/StatsCard';
+import { getAnalytics, getTopQueries, getQueryTrends } from '../lib/api';
+import { formatNumber } from '../lib/utils';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 

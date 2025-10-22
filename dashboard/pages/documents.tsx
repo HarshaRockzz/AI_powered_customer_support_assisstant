@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Layout from '@/components/Layout';
+import Layout from '../components/Layout';
 import { 
   ArrowUpTrayIcon,
   CheckCircleIcon,
@@ -10,8 +10,8 @@ import {
   FolderOpenIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
-import { getDocuments, uploadDocument } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { getDocuments, uploadDocument } from '../lib/api';
+import { formatDate } from '../lib/utils';
 
 export default function Documents() {
   const [documents, setDocuments] = useState<any[]>([]);
