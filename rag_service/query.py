@@ -31,16 +31,13 @@ class RAGQueryEngine:
     """Handles RAG query processing"""
     
     def __init__(self):
-        # Initialize embeddings based on provider
-        self.embeddings = self._initialize_embeddings()
+        # LAZY LOAD embeddings and LLM only when needed (to save memory on startup)
+        self._embeddings = None
+        self._llm = None
+        self._vector_store = None
+        self.qdrant_client = None
         
-        # Initialize LLM based on provider
-        self.llm = self._initialize_llm()
-        
-        # Initialize vector store
-        self._initialize_vector_store()
-        
-        # Custom prompt template
+        # Setup prompt template (lightweight, no memory impact)
         self.prompt_template = """You are an AI customer support assistant. Use the following pieces of context to answer the question at the end. 
 If you don't know the answer based on the context, just say that you don't know, don't try to make up an answer.
 
@@ -121,6 +118,27 @@ Helpful Answer:"""
         else:
             raise ValueError(f"Unknown LLM provider: {provider}. Choose: openai, groq, or ollama")
     
+    @property
+    def embeddings(self):
+        """Lazy load embeddings only when first accessed"""
+        if self._embeddings is None:
+            self._embeddings = self._initialize_embeddings()
+        return self._embeddings
+    
+    @property
+    def llm(self):
+        """Lazy load LLM only when first accessed"""
+        if self._llm is None:
+            self._llm = self._initialize_llm()
+        return self._llm
+    
+    @property
+    def vector_store(self):
+        """Lazy load vector store only when first accessed"""
+        if self._vector_store is None:
+            self._initialize_vector_store()
+        return self._vector_store
+    
     def _initialize_vector_store(self):
         """Initialize vector store"""
         if settings.vector_db == "qdrant":
@@ -133,10 +151,10 @@ Helpful Answer:"""
             else:
                 self.qdrant_client = QdrantClient(url=settings.qdrant_url)
             
-            self.vector_store = Qdrant(
+            self._vector_store = Qdrant(
                 client=self.qdrant_client,
                 collection_name=settings.qdrant_collection_name,
-                embeddings=self.embeddings
+                embeddings=self.embeddings  # This triggers lazy load
             )
     
     async def query(
@@ -216,6 +234,16 @@ Helpful Answer:"""
         """Check if vector database is healthy"""
         try:
             if settings.vector_db == "qdrant":
+                # Initialize client if not already done
+                if not self.qdrant_client:
+                    if settings.qdrant_api_key:
+                        self.qdrant_client = QdrantClient(
+                            url=settings.qdrant_url,
+                            api_key=settings.qdrant_api_key
+                        )
+                    else:
+                        self.qdrant_client = QdrantClient(url=settings.qdrant_url)
+                
                 collections = self.qdrant_client.get_collections()
                 return True
             return True
@@ -227,6 +255,16 @@ Helpful Answer:"""
         """Get statistics about the vector store"""
         try:
             if settings.vector_db == "qdrant":
+                # Initialize client if not already done
+                if not self.qdrant_client:
+                    if settings.qdrant_api_key:
+                        self.qdrant_client = QdrantClient(
+                            url=settings.qdrant_url,
+                            api_key=settings.qdrant_api_key
+                        )
+                    else:
+                        self.qdrant_client = QdrantClient(url=settings.qdrant_url)
+                
                 collection_info = self.qdrant_client.get_collection(
                     collection_name=settings.qdrant_collection_name
                 )

@@ -19,8 +19,8 @@ class DocumentIngestor:
     """Handles document ingestion into vector database"""
     
     def __init__(self):
-        # Initialize embeddings based on provider
-        self.embeddings = self._initialize_embeddings()
+        # LAZY LOAD embeddings only when needed (to save memory on startup)
+        self._embeddings = None
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
@@ -37,10 +37,17 @@ class DocumentIngestor:
                 )
             else:
                 self.qdrant_client = QdrantClient(url=settings.qdrant_url)
-            self._ensure_collection_exists()
+            # Don't ensure collection on startup - do it when ingesting
         elif settings.vector_db == "pinecone":
             # Initialize Pinecone if needed
             pass
+    
+    @property
+    def embeddings(self):
+        """Lazy load embeddings only when first accessed"""
+        if self._embeddings is None:
+            self._embeddings = self._initialize_embeddings()
+        return self._embeddings
     
     def _initialize_embeddings(self):
         """Initialize embeddings based on provider"""
@@ -104,6 +111,9 @@ class DocumentIngestor:
             Dictionary with ingestion results
         """
         try:
+            # Ensure collection exists before ingesting
+            self._ensure_collection_exists()
+            
             # Extract text from file
             text = self._extract_text(file_content, filename, file_type)
             
@@ -128,12 +138,12 @@ class DocumentIngestor:
                 for i in range(len(chunks))
             ]
             
-            # Store in vector database
+            # Store in vector database (embeddings loaded here via property)
             if settings.vector_db == "qdrant":
                 vector_store = Qdrant(
                     client=self.qdrant_client,
                     collection_name=settings.qdrant_collection_name,
-                    embeddings=self.embeddings
+                    embeddings=self.embeddings  # This triggers lazy load
                 )
                 vector_store.add_texts(texts=chunks, metadatas=metadatas)
             
