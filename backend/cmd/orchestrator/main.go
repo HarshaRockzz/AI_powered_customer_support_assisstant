@@ -38,11 +38,16 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize Redis
-	if _, err := cache.Initialize(cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword); err != nil {
-		logrus.WithError(err).Fatal("Failed to initialize Redis")
+	// Initialize Redis (optional - skip if not configured)
+	if cfg.RedisHost != "" && cfg.RedisHost != "localhost" {
+		if _, err := cache.Initialize(cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword); err != nil {
+			logrus.WithError(err).Warn("Failed to initialize Redis, continuing without cache")
+		} else {
+			defer cache.Close()
+		}
+	} else {
+		logrus.Info("Redis not configured, running without cache")
 	}
-	defer cache.Close()
 
 	// Initialize services
 	queryService := services.NewQueryService(cfg)
