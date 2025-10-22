@@ -12,16 +12,9 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY dashboard/package.json ./package.json
-COPY dashboard/next.config.js ./next.config.js
-COPY dashboard/tsconfig.json ./tsconfig.json
-COPY dashboard/tailwind.config.js ./tailwind.config.js
-COPY dashboard/postcss.config.js ./postcss.config.js
-COPY dashboard/pages ./pages
-COPY dashboard/components ./components
-COPY dashboard/lib ./lib
-COPY dashboard/styles ./styles
-COPY dashboard/public ./public
+
+# Copy all dashboard source files
+COPY dashboard ./
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
