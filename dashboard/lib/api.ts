@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-// Backend API URL - set via NEXT_PUBLIC_BACKEND_URL environment variable
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+// Backend API URL - HARDCODED for production deployment
+const BACKEND_URL = 'https://ai-support-backend-z4eq.onrender.com';
 
 // Debug: Log the backend URL being used
 if (typeof window !== 'undefined') {
   console.log('🔍 Backend URL:', BACKEND_URL);
-  console.log('🔍 Environment:', process.env.NEXT_PUBLIC_BACKEND_URL);
 }
 
 const api = axios.create({
