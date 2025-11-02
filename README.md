@@ -1,4 +1,4 @@
-# 🚀 AI-Powered Customer Support Assistant
+# AI-Powered Customer Support Assistant
 
 
 ## ✨ Features
@@ -10,9 +10,6 @@
 - 🎨 **Stunning UI** - Modern glassmorphic design with particle effects
 - 🐳 **Docker Ready** - Deploy anywhere with Docker
 - 🔒 **Secure** - Rate limiting, authentication, and monitoring built-in
-
-## 🌐 Live Demo
-
 
 ## 🛠️ Tech Stack
 
@@ -41,8 +38,6 @@
 - **Prometheus & Grafana** - Monitoring
 - **GitHub Actions** - CI/CD
 - **Render.com** - Deployment platform
-
-## 🚀 Quick Deploy to Render.com
 
 ### Prerequisites
 - GitHub account
@@ -276,10 +271,6 @@ open http://localhost:3000
 - **Redis**: $10/month (1GB)
 - **Qdrant Cloud**: $25/month (5GB)
 - **Total: ~$63/month** for production-grade
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
