@@ -16,6 +16,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy all dashboard source files
 COPY dashboard ./
 
+# Tell Docker to pull these environment variables during the build phase
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN npm run build
