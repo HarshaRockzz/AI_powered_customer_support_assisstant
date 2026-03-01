@@ -11,6 +11,7 @@ from qdrant_client.models import Distance, VectorParams
 import uuid
 
 from config import settings
+from openrouter_embeddings import OpenRouterEmbeddings
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,9 @@ class DocumentIngestor:
         elif provider == "openrouter":
             if not settings.openrouter_api_key:
                 raise ValueError("OpenRouter API key required for OpenRouter embeddings")
-            logger.info(f"Using OpenRouter embeddings: {settings.openrouter_embedding_model}")
-            return OpenAIEmbeddings(
-                openai_api_key=settings.openrouter_api_key,
-                openai_api_base="https://openrouter.ai/api/v1",
+            logger.info(f"Using Custom OpenRouter embeddings: {settings.openrouter_embedding_model}")
+            return OpenRouterEmbeddings(
+                api_key=settings.openrouter_api_key,
                 model=settings.openrouter_embedding_model
             )
         else:
