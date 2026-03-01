@@ -17,7 +17,7 @@ services:
     networks:
       - ai_support_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ai_support_user"]
+      test: [ "CMD-SHELL", "pg_isready -U ai_support_user" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +33,7 @@ services:
     networks:
       - ai_support_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: ai_support_backend
     environment:
-      - BACKEND_PORT=8080
+      - SERVER_PORT=8080
       - GO_ENV=${GO_ENV:-production}
       - POSTGRES_URL=postgres://${POSTGRES_USER:-ai_support_user}:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/${POSTGRES_DB:-ai_support}?sslmode=disable
       - REDIS_HOST=redis
@@ -80,7 +80,7 @@ services:
     networks:
       - ai_support_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,25 +93,30 @@ services:
     container_name: ai_support_rag
     environment:
       # LLM Provider Selection
-      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
-      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
-      
+      - LLM_PROVIDER=${LLM_PROVIDER:-openrouter}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openrouter}
+
+      # OpenRouter
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-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}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-meta-llama/llama-3-8b-instruct}
+      - OPENROUTER_EMBEDDING_MODEL=${OPENROUTER_EMBEDDING_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
+
       # OpenAI (optional)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
-      
+
       # Groq (FREE)
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GROQ_MODEL=${GROQ_MODEL:-llama-3.1-70b-versatile}
-      
+
       # HuggingFace (FREE)
       - HF_EMBEDDING_MODEL=${HF_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
-      
+
       # Ollama (LOCAL)
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
-      
+
       # Vector DB
       - VECTOR_DB=${VECTOR_DB:-qdrant}
       - QDRANT_URL=http://qdrant:6333
@@ -119,7 +124,7 @@ services:
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
       - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-}
       - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-}
-      
+
       - RAG_SERVICE_PORT=8000
     ports:
       - "8000:8000"
@@ -130,7 +135,7 @@ services:
     volumes:
       - rag_uploads:/app/uploads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -152,7 +157,7 @@ services:
     networks:
       - ai_support_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -206,4 +211,5 @@ volumes:
   rag_uploads:
   prometheus_data:
   grafana_data:
+
 

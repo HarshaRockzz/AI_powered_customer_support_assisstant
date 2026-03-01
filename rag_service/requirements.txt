@@ -19,10 +19,9 @@ pydantic-settings>=2.1.0
 tiktoken>=0.5.2
 aiohttp>=3.9.1
 
-# Install PyTorch CPU-only (lightweight, no CUDA bloat!)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.6.0+cpu
-torchvision==0.21.0+cpu
+# Install PyTorch
+torch>=2.0.0
+torchvision>=0.15.0
 
 # Sentence transformers (for FREE HuggingFace embeddings)
 sentence-transformers>=2.7.0

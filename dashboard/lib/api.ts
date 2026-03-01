@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Backend API URL - HARDCODED for production deployment
-const BACKEND_URL = 'https://ai-support-backend-z4eq.onrender.com';
+// Backend API URL - Use environment variable or fallback to localhost
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
 // Debug: Log the backend URL being used
 if (typeof window !== 'undefined') {
@@ -87,13 +87,13 @@ export const getFeedback = async (limit: number = 50): Promise<any[]> => {
 export const uploadDocument = async (file: File): Promise<any> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await api.post('/api/docs/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  
+
   return response.data;
 };
 

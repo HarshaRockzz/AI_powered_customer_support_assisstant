@@ -71,6 +71,15 @@ Helpful Answer:"""
             return HuggingFaceEmbeddings(
                 model_name=settings.hf_embedding_model
             )
+        elif provider == "openrouter":
+            if not settings.openrouter_api_key:
+                raise ValueError("OpenRouter API key required for OpenRouter embeddings")
+            logger.info(f"Using OpenRouter embeddings: {settings.openrouter_embedding_model}")
+            return OpenAIEmbeddings(
+                openai_api_key=settings.openrouter_api_key,
+                openai_api_base="https://openrouter.ai/api/v1",
+                model=settings.openrouter_embedding_model
+            )
         else:
             raise ValueError(f"Unknown embedding provider: {provider}")
     
@@ -114,9 +123,22 @@ Helpful Answer:"""
                 model=settings.ollama_model,
                 temperature=settings.temperature
             )
+            
+        elif provider == "openrouter":
+            if not settings.openrouter_api_key:
+                raise ValueError("OpenRouter API key required. Get one at https://openrouter.ai/keys")
+            
+            logger.info(f"Using OpenRouter with model: {settings.openrouter_model}")
+            return ChatOpenAI(
+                openai_api_key=settings.openrouter_api_key,
+                openai_api_base="https://openrouter.ai/api/v1",
+                model=settings.openrouter_model,
+                temperature=settings.temperature,
+                max_tokens=settings.max_tokens
+            )
         
         else:
-            raise ValueError(f"Unknown LLM provider: {provider}. Choose: openai, groq, or ollama")
+            raise ValueError(f"Unknown LLM provider: {provider}. Choose: openai, groq, ollama, or openrouter")
     
     @property
     def embeddings(self):
@@ -197,15 +219,18 @@ Helpful Answer:"""
             # Extract context from source documents
             context = [doc.page_content for doc in result.get("source_documents", [])]
             
-            # Calculate tokens used (approximation)
+            # Use simple character division for token approximation to avoid OpenAI/Tiktoken network calls
             tokens_used = self._estimate_tokens(query, result["result"], context)
+            
+            # Determine actual model used
+            active_model = settings.openrouter_model if settings.llm_provider == "openrouter" else settings.openai_model
             
             logger.info(f"Query processed successfully, {len(context)} context docs retrieved")
             
             return {
                 "response": result["result"],
                 "context": context,
-                "model": settings.openai_model,
+                "model": active_model,
                 "tokens_used": tokens_used
             }
             
@@ -214,16 +239,17 @@ Helpful Answer:"""
             raise
     
     def _estimate_tokens(self, query: str, response: str, context: List[str]) -> int:
-        """Estimate token usage"""
+        """Estimate token usage using a simple character division to avoid external network calls."""
         try:
-            encoding = tiktoken.encoding_for_model(settings.openai_model)
+            # A rough estimate is 4 characters per token
+            query_chars = len(query)
+            response_chars = len(response)
+            context_chars = sum(len(c) for c in context)
             
-            query_tokens = len(encoding.encode(query))
-            response_tokens = len(encoding.encode(response))
-            context_tokens = sum(len(encoding.encode(c)) for c in context)
+            total_chars = query_chars + response_chars + context_chars
             
-            # Add overhead for prompt template
-            total_tokens = query_tokens + response_tokens + context_tokens + 100
+            # Add overhead for prompt template (~100 tokens)
+            total_tokens = (total_chars // 4) + 100
             
             return total_tokens
         except Exception as e:

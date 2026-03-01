@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1")
     
+    # OpenRouter
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3-8b-instruct")
+    openrouter_embedding_model: str = os.getenv("OPENROUTER_EMBEDDING_MODEL", "nvidia/llama-nemotron-embed-vl-1b-v2:free")
+    
     # Embedding Provider: "openai", "huggingface"
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "openai")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")

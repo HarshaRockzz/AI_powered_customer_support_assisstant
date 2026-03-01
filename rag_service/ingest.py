@@ -67,6 +67,15 @@ class DocumentIngestor:
             return HuggingFaceEmbeddings(
                 model_name=settings.hf_embedding_model
             )
+        elif provider == "openrouter":
+            if not settings.openrouter_api_key:
+                raise ValueError("OpenRouter API key required for OpenRouter embeddings")
+            logger.info(f"Using OpenRouter embeddings: {settings.openrouter_embedding_model}")
+            return OpenAIEmbeddings(
+                openai_api_key=settings.openrouter_api_key,
+                openai_api_base="https://openrouter.ai/api/v1",
+                model=settings.openrouter_embedding_model
+            )
         else:
             raise ValueError(f"Unknown embedding provider: {provider}")
     
@@ -82,6 +91,8 @@ class DocumentIngestor:
                     vector_size = 1536  # OpenAI embedding size
                 elif settings.embedding_provider == "huggingface":
                     vector_size = 384   # all-MiniLM-L6-v2 size
+                elif settings.embedding_provider == "openrouter":
+                    vector_size = 2048  # nvidia/llama-nemotron-embed-vl-1b-v2:free size
                 else:
                     vector_size = 1536  # default
                 

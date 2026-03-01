@@ -12,11 +12,16 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Fix SSL Certs by installing certifi and wiring it up to requests and urllib
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org certifi
+ENV SSL_CERT_FILE=/usr/local/lib/python3.11/site-packages/certifi/cacert.pem
+ENV REQUESTS_CA_BUNDLE=/usr/local/lib/python3.11/site-packages/certifi/cacert.pem
+
 # Copy and install Python dependencies
 # By copying requirements.txt first, Docker only rebuilds this layer when requirements change
 COPY rag_service/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir sentence-transformers
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt \
+    && pip install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org sentence-transformers
 
 # Copy the rest of the application code
 COPY rag_service/ /app/
