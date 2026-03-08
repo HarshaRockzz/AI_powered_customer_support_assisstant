@@ -19,10 +19,10 @@ def ping_database():
     if not supabase_url.startswith('http'):
         supabase_url = f"https://{supabase_url}"
     
-    # We query a non-existent or real table. A 404 on a REST API table query
-    # will still count towards API requests, whereas querying the root schema
-    # (/rest/v1/) might be completely excluded from the dashboard metrics.
-    api_url = f"{supabase_url}/rest/v1/dummy_keep_alive_table?select=id&limit=1"
+    # We query the `supabase_keep_alive` table to register dashboard activity.
+    # The previous script created this table, so we know it exists.
+    # A successful query here will grant a 200 OK and count on the dashboard.
+    api_url = f"{supabase_url}/rest/v1/supabase_keep_alive?select=id&limit=1"
     
     headers = {
         'apikey': supabase_key,
