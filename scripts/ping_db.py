@@ -1,58 +1,51 @@
 #!/usr/bin/env python3
-"""
-Ping the database with real read/write queries to keep the connection active.
-Used by the GitHub Action to prevent Supabase from pausing due to inactivity.
-Reads DATABASE_URL from environment (set by the workflow from repo secrets).
-"""
 import os
 import sys
+import requests
 
-def main():
-    url = os.environ.get('DATABASE_URL')
-    if not url:
-        print('DATABASE_URL not set', file=sys.stderr)
+def ping_database():
+    """
+    Pings the Supabase REST API to ensure the project registers activity.
+    Supabase free-tier projects are paused if they don't receive API requests.
+    """
+    supabase_url = os.environ.get('SUPABASE_URL')
+    supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+    
+    if not supabase_url or not supabase_key:
+        print("Error: SUPABASE_URL and SUPABASE_ANON_KEY environment variables must be set.")
         sys.exit(1)
+
+    # Ensure URL is properly formatted
+    if not supabase_url.startswith('http'):
+        supabase_url = f"https://{supabase_url}"
+    
+    # We query the root REST endpoint to get the OpenAPI spec.
+    # This guarantees a 200 OK response on any Supabase project without
+    # needing to guess what tables exist in the public schema.
+    api_url = f"{supabase_url}/rest/v1/"
+    
+    headers = {
+        'apikey': supabase_key,
+        'Authorization': f'Bearer {supabase_key}',
+        'Content-Type': 'application/json'
+    }
 
     try:
-        import psycopg2
+        print(f"Pinging Supabase REST API at {supabase_url}...")
+        response = requests.get(api_url, headers=headers, timeout=10)
         
-        print("Connecting to database...")
-        conn = psycopg2.connect(url)
-        # Ensure changes are committed automatically
-        conn.autocommit = True
-        cur = conn.cursor()
+        print(f"Response Status Code: {response.status_code}")
         
-        # 1. Create the table if it doesn't exist
-        print("Ensuring 'supabase_keep_alive' table exists...")
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS supabase_keep_alive (
-                id SERIAL PRIMARY KEY,
-                pinged_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        
-        # 2. Insert a new record to register as a 'write' activity
-        print("Inserting new keep-alive record...")
-        cur.execute("INSERT INTO supabase_keep_alive (pinged_at) VALUES (CURRENT_TIMESTAMP);")
-        
-        # 3. Clean up older records (keep only the last 7 days to prevent bloat)
-        print("Cleaning up old records...")
-        cur.execute("""
-            DELETE FROM supabase_keep_alive 
-            WHERE pinged_at < CURRENT_TIMESTAMP - INTERVAL '7 days';
-        """)
-        
-        # 4. Read back the latest count to register as a 'read' activity
-        cur.execute("SELECT COUNT(*) FROM supabase_keep_alive;")
-        count = cur.fetchone()[0]
-        
-        print(f"Database ping OK. Current keep-alive records: {count}")
-        
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f'Database ping failed: {e}', file=sys.stderr)
+        if response.status_code == 200:
+            print("Successfully registered activity with Supabase!")
+        else:
+            print(f"Warning: Unexpected response: {response.text}")
+            if response.status_code >= 500:
+                 sys.exit(1)
+                 
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
         sys.exit(1)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    ping_database()

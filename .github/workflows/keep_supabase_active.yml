@@ -1,3 +1,10 @@
+# Keep Supabase project active by querying the REST API daily.
+# Prevents the free-tier project from being paused due to inactivity.
+#
+# Required: Add SUPABASE_URL and SUPABASE_ANON_KEY secrets in repo Settings > Secrets and variables > Actions
+# SUPABASE_URL: e.g. https://your-project-ref.supabase.co
+# SUPABASE_ANON_KEY: Your project's anon/public key
+
 name: Keep Supabase Active
 
 on:
@@ -8,7 +15,7 @@ on:
     # Allow manual run for verification
 
 jobs:
-  ping-db:
+  ping-api:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,10 +26,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install psycopg2
-        run: pip install psycopg2-binary
+      - name: Install requests
+        run: pip install requests
 
-      - name: Ping database
+      - name: Ping Supabase REST API
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python scripts/ping_db.py
