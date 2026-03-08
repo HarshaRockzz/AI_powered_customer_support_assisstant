@@ -19,10 +19,10 @@ def ping_database():
     if not supabase_url.startswith('http'):
         supabase_url = f"https://{supabase_url}"
     
-    # We query the root REST endpoint to get the OpenAPI spec.
-    # This guarantees a 200 OK response on any Supabase project without
-    # needing to guess what tables exist in the public schema.
-    api_url = f"{supabase_url}/rest/v1/"
+    # We query a non-existent or real table. A 404 on a REST API table query
+    # will still count towards API requests, whereas querying the root schema
+    # (/rest/v1/) might be completely excluded from the dashboard metrics.
+    api_url = f"{supabase_url}/rest/v1/dummy_keep_alive_table?select=id&limit=1"
     
     headers = {
         'apikey': supabase_key,
