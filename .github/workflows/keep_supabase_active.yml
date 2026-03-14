@@ -1,11 +1,10 @@
-# Keep Supabase project active by querying the REST API daily.
-# Prevents the free-tier project from being paused due to inactivity.
+# Keep cloud services active by querying their REST APIs daily.
+# Prevents the free-tier projects from being paused due to inactivity.
 #
-# Required: Add SUPABASE_URL and SUPABASE_ANON_KEY secrets in repo Settings > Secrets and variables > Actions
-# SUPABASE_URL: e.g. https://your-project-ref.supabase.co
-# SUPABASE_ANON_KEY: Your project's anon/public key
+# Supabase Secrets: SUPABASE_URL, SUPABASE_ANON_KEY
+# Qdrant Secrets: QDRANT_URL, QDRANT_API_KEY
 
-name: Keep Supabase Active
+name: Keep Services Active
 
 on:
   schedule:
@@ -15,7 +14,7 @@ on:
     # Allow manual run for verification
 
 jobs:
-  ping-api:
+  ping-services:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,3 +33,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python scripts/ping_db.py
+
+      - name: Ping Qdrant API
+        env:
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: python scripts/ping_qdrant.py
