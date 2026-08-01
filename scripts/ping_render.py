@@ -27,7 +27,10 @@ def main():
         print("Error: BACKEND_URL and RAG_URL environment variables must be set.")
         sys.exit(1)
 
-    backend_ok = ping('Backend', f"{backend_url}/api/health")
+    # Root route always returns 200 regardless of Redis/RAG health, so it's
+    # a reliable wake-up ping. /api/health can report 503 ("degraded") even
+    # when the service is up, e.g. if Redis isn't configured.
+    backend_ok = ping('Backend', backend_url)
     rag_ok = ping('RAG service', f"{rag_url}/health")
 
     if not backend_ok or not rag_ok:
