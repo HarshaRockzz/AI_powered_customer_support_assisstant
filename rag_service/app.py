@@ -15,8 +15,7 @@ from retrain import RetrainManager
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="AI Support Assistant - RAG Service",
     description="RAG microservice for document ingestion, query processing, and retraining",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -83,13 +82,7 @@ async def root():
         "service": "AI Support Assistant RAG Service",
         "version": "1.0.0",
         "status": "running",
-        "endpoints": [
-            "/rag/ingest",
-            "/rag/query",
-            "/rag/retrain",
-            "/health",
-            "/docs"
-        ]
+        "endpoints": ["/rag/ingest", "/rag/query", "/rag/retrain", "/health", "/docs"],
     }
 
 
@@ -99,12 +92,12 @@ async def health_check():
     try:
         # Check vector DB connection
         vector_db_status = query_engine.check_vector_db_health()
-        
+
         return HealthResponse(
             status="healthy" if vector_db_status else "degraded",
             timestamp=datetime.utcnow(),
             version="1.0.0",
-            vector_db=settings.vector_db
+            vector_db=settings.vector_db,
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -112,7 +105,7 @@ async def health_check():
             status="unhealthy",
             timestamp=datetime.utcnow(),
             version="1.0.0",
-            vector_db=settings.vector_db
+            vector_db=settings.vector_db,
         )
 
 
@@ -124,29 +117,29 @@ async def ingest_document(file: UploadFile = File(...)):
     """
     try:
         logger.info(f"Ingesting document: {file.filename}")
-        
+
         # Read file content
         content = await file.read()
-        
+
         # Process and ingest document
         result = await document_ingestor.ingest(
-            file_content=content,
-            filename=file.filename,
-            file_type=file.content_type
+            file_content=content, filename=file.filename, file_type=file.content_type
         )
-        
+
         logger.info(f"Document ingested successfully: {result['chunk_count']} chunks")
-        
+
         return IngestResponse(
             status="success",
             chunk_count=result["chunk_count"],
             vector_store_id=result["vector_store_id"],
-            message=f"Document '{file.filename}' ingested successfully"
+            message=f"Document '{file.filename}' ingested successfully",
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to ingest document: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to ingest document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to ingest document: {str(e)}"
+        )
 
 
 @app.post("/rag/query", response_model=QueryResponse)
@@ -166,18 +159,22 @@ async def query_rag(request: QueryRequest):
             model=request.model,
         )
 
-        logger.info(f"Query processed successfully, tokens used: {result['tokens_used']}")
+        logger.info(
+            f"Query processed successfully, tokens used: {result['tokens_used']}"
+        )
 
         return QueryResponse(
             response=result["response"],
             context=result["context"],
             model=result["model"],
-            tokens_used=result["tokens_used"]
+            tokens_used=result["tokens_used"],
         )
 
     except Exception as e:
         logger.error(f"Failed to process query: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to process query: {str(e)}"
+        )
 
 
 @app.post("/rag/query/stream")
@@ -187,6 +184,7 @@ async def query_rag_stream(request: QueryRequest):
     Emits `data: <token>` lines as text arrives, then a final
     `event: done` line with a JSON payload of context/model/tokens_used.
     """
+
     async def event_generator():
         try:
             async for chunk in query_engine.stream_query(
@@ -224,23 +222,24 @@ async def retrain_model(request: RetrainRequest):
     """
     try:
         logger.info("Starting model retraining...")
-        
+
         result = await retrain_manager.retrain(
-            feedback_threshold=request.feedback_threshold,
-            model_name=request.model_name
+            feedback_threshold=request.feedback_threshold, model_name=request.model_name
         )
-        
+
         logger.info(f"Retraining completed: {result}")
-        
+
         return {
             "status": "success",
             "message": "Model retraining initiated",
-            "details": result
+            "details": result,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to retrain model: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrain model: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrain model: {str(e)}"
+        )
 
 
 @app.get("/rag/stats")
@@ -256,10 +255,5 @@ async def get_stats():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=settings.rag_service_port,
-        reload=True
-    )
 
+    uvicorn.run("app:app", host="0.0.0.0", port=settings.rag_service_port, reload=True)

@@ -55,7 +55,11 @@ func (s *DocumentService) ingestDocument(docID uint, file multipart.File, header
 	ctx := context.Background()
 
 	// Reset file pointer
-	file.Seek(0, 0)
+	if _, err := file.Seek(0, 0); err != nil {
+		s.updateDocumentStatus(docID, "failed")
+		logrus.WithError(err).Error("Failed to reset file pointer")
+		return
+	}
 
 	// Create multipart form
 	body := &bytes.Buffer{}

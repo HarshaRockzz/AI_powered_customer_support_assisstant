@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class DocumentIngestor:
     """Handles document ingestion into vector database"""
-    
+
     def __init__(self):
         # LAZY LOAD embeddings only when needed (to save memory on startup)
         self._embeddings = None
@@ -27,14 +27,13 @@ class DocumentIngestor:
             chunk_overlap=settings.chunk_overlap,
             length_function=len,
         )
-        
+
         # Initialize vector store
         if settings.vector_db == "qdrant":
             # Connect to Qdrant (supports both local and Qdrant Cloud)
             if settings.qdrant_api_key:
                 self.qdrant_client = QdrantClient(
-                    url=settings.qdrant_url,
-                    api_key=settings.qdrant_api_key
+                    url=settings.qdrant_url, api_key=settings.qdrant_api_key
                 )
             else:
                 self.qdrant_client = QdrantClient(url=settings.qdrant_url)
@@ -42,170 +41,171 @@ class DocumentIngestor:
         elif settings.vector_db == "pinecone":
             # Initialize Pinecone if needed
             pass
-    
+
     @property
     def embeddings(self):
         """Lazy load embeddings only when first accessed"""
         if self._embeddings is None:
             self._embeddings = self._initialize_embeddings()
         return self._embeddings
-    
+
     def _initialize_embeddings(self):
         """Initialize embeddings based on provider"""
         provider = settings.embedding_provider.lower()
-        
+
         logger.info(f"Initializing embeddings with provider: {provider}")
-        
+
         if provider == "openai":
             if not settings.openai_api_key:
                 raise ValueError("OpenAI API key required for OpenAI embeddings")
             return OpenAIEmbeddings(
-                openai_api_key=settings.openai_api_key,
-                model=settings.embedding_model
+                openai_api_key=settings.openai_api_key, model=settings.embedding_model
             )
         elif provider == "huggingface":
-            logger.info(f"Using FREE HuggingFace embeddings: {settings.hf_embedding_model}")
-            return HuggingFaceEmbeddings(
-                model_name=settings.hf_embedding_model
+            logger.info(
+                f"Using FREE HuggingFace embeddings: {settings.hf_embedding_model}"
             )
+            return HuggingFaceEmbeddings(model_name=settings.hf_embedding_model)
         elif provider == "openrouter":
             if not settings.openrouter_api_key:
-                raise ValueError("OpenRouter API key required for OpenRouter embeddings")
-            logger.info(f"Using Custom OpenRouter embeddings: {settings.openrouter_embedding_model}")
+                raise ValueError(
+                    "OpenRouter API key required for OpenRouter embeddings"
+                )
+            logger.info(
+                f"Using Custom OpenRouter embeddings: {settings.openrouter_embedding_model}"
+            )
             return OpenRouterEmbeddings(
                 api_key=settings.openrouter_api_key,
-                model=settings.openrouter_embedding_model
+                model=settings.openrouter_embedding_model,
             )
         else:
             raise ValueError(f"Unknown embedding provider: {provider}")
-    
+
     def _ensure_collection_exists(self):
         """Ensure Qdrant collection exists"""
         try:
             collections = self.qdrant_client.get_collections().collections
             collection_names = [c.name for c in collections]
-            
+
             if settings.qdrant_collection_name not in collection_names:
                 # Determine vector size based on embedding provider
                 if settings.embedding_provider == "openai":
                     vector_size = 1536  # OpenAI embedding size
                 elif settings.embedding_provider == "huggingface":
-                    vector_size = 384   # all-MiniLM-L6-v2 size
+                    vector_size = 384  # all-MiniLM-L6-v2 size
                 elif settings.embedding_provider == "openrouter":
                     vector_size = 2048  # nvidia/llama-nemotron-embed-vl-1b-v2:free size
                 else:
                     vector_size = 1536  # default
-                
-                logger.info(f"Creating collection: {settings.qdrant_collection_name} with vector size: {vector_size}")
+
+                logger.info(
+                    f"Creating collection: {settings.qdrant_collection_name} with vector size: {vector_size}"
+                )
                 self.qdrant_client.create_collection(
                     collection_name=settings.qdrant_collection_name,
-                    vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
+                    vectors_config=VectorParams(
+                        size=vector_size, distance=Distance.COSINE
+                    ),
                 )
         except Exception as e:
             logger.error(f"Failed to ensure collection exists: {e}")
-    
-    async def ingest(
-        self,
-        file_content: bytes,
-        filename: str,
-        file_type: str
-    ) -> Dict:
+
+    async def ingest(self, file_content: bytes, filename: str, file_type: str) -> Dict:
         """
         Ingest a document into the vector store
-        
+
         Args:
             file_content: Raw file bytes
             filename: Name of the file
             file_type: MIME type of the file
-        
+
         Returns:
             Dictionary with ingestion results
         """
         try:
             # Ensure collection exists before ingesting
             self._ensure_collection_exists()
-            
+
             # Extract text from file
             text = self._extract_text(file_content, filename, file_type)
-            
+
             if not text or len(text.strip()) == 0:
                 raise ValueError("No text could be extracted from the document")
-            
+
             # Split text into chunks
             chunks = self.text_splitter.split_text(text)
             logger.info(f"Split document into {len(chunks)} chunks")
-            
+
             # Generate unique ID for this document
             doc_id = str(uuid.uuid4())
-            
+
             # Create metadata for chunks
             metadatas = [
                 {
                     "source": filename,
                     "doc_id": doc_id,
                     "chunk_index": i,
-                    "total_chunks": len(chunks)
+                    "total_chunks": len(chunks),
                 }
                 for i in range(len(chunks))
             ]
-            
+
             # Store in vector database (embeddings loaded here via property)
             if settings.vector_db == "qdrant":
                 vector_store = Qdrant(
                     client=self.qdrant_client,
                     collection_name=settings.qdrant_collection_name,
-                    embeddings=self.embeddings  # This triggers lazy load
+                    embeddings=self.embeddings,  # This triggers lazy load
                 )
                 vector_store.add_texts(texts=chunks, metadatas=metadatas)
-            
+
             logger.info(f"Successfully ingested {len(chunks)} chunks for {filename}")
-            
+
             return {
                 "chunk_count": len(chunks),
                 "vector_store_id": doc_id,
-                "filename": filename
+                "filename": filename,
             }
-            
+
         except Exception as e:
             logger.error(f"Error ingesting document: {e}")
             raise
-    
+
     def _extract_text(self, file_content: bytes, filename: str, file_type: str) -> str:
         """Extract text from different file types"""
         try:
             filename_lower = filename.lower()
-            
+
             # PDF files
-            if filename_lower.endswith('.pdf') or 'pdf' in file_type:
+            if filename_lower.endswith(".pdf") or "pdf" in file_type:
                 return self._extract_from_pdf(file_content)
-            
+
             # Text files
-            elif filename_lower.endswith(('.txt', '.md', '.markdown', '.csv')):
-                return file_content.decode('utf-8')
-            
+            elif filename_lower.endswith((".txt", ".md", ".markdown", ".csv")):
+                return file_content.decode("utf-8")
+
             else:
                 # Try to decode as text
                 try:
-                    return file_content.decode('utf-8')
+                    return file_content.decode("utf-8")
                 except:
                     raise ValueError(f"Unsupported file type: {file_type}")
-                    
+
         except Exception as e:
             logger.error(f"Error extracting text: {e}")
             raise
-    
+
     def _extract_from_pdf(self, file_content: bytes) -> str:
         """Extract text from PDF"""
         try:
             pdf_file = io.BytesIO(file_content)
             pdf_reader = PdfReader(pdf_file)
-            
+
             text = ""
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n"
-            
+
             return text
         except Exception as e:
             logger.error(f"Error extracting from PDF: {e}")
             raise
-
