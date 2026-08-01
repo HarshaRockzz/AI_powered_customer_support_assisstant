@@ -23,11 +23,27 @@ class Settings(BaseSettings):
     
     # OpenRouter
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
-    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3-8b-instruct")
+    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free")
+    # nvidia/llama-nemotron-embed-vl-1b-v2:free is a live free OpenRouter embedding
+    # model (2048-dim) — used when EMBEDDING_PROVIDER=openrouter.
     openrouter_embedding_model: str = os.getenv("OPENROUTER_EMBEDDING_MODEL", "nvidia/llama-nemotron-embed-vl-1b-v2:free")
-    
-    # Embedding Provider: "openai", "huggingface"
-    embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "openai")
+
+    # Free OpenRouter chat models available for the frontend model picker.
+    # Verified live against https://openrouter.ai/api/v1/models.
+    openrouter_free_models: list = [
+        {"id": "google/gemma-4-31b-it:free", "label": "Gemma 4 31B", "context_length": 262144},
+        {"id": "openai/gpt-oss-20b:free", "label": "GPT-OSS 20B", "context_length": 131072},
+        {"id": "nvidia/nemotron-3-super-120b-a12b:free", "label": "Nemotron 3 Super 120B", "context_length": 262144},
+        {"id": "nvidia/nemotron-3-nano-30b-a3b:free", "label": "Nemotron 3 Nano 30B", "context_length": 256000},
+        {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "label": "Nemotron 3 Ultra 550B", "context_length": 1000000},
+        {"id": "meta-llama/llama-3.3-70b-instruct:free", "label": "Llama 3.3 70B", "context_length": 131072},
+        {"id": "cohere/north-mini-code:free", "label": "North Mini Code", "context_length": 256000},
+        {"id": "poolside/laguna-m.1:free", "label": "Laguna M.1", "context_length": 262144},
+        {"id": "poolside/laguna-xs-2.1:free", "label": "Laguna XS 2.1", "context_length": 262144},
+    ]
+
+    # Embedding Provider: "openai", "huggingface", "openrouter"
+    embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "openrouter")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     
     # HuggingFace Embeddings (FREE!)
@@ -40,6 +56,9 @@ class Settings(BaseSettings):
     qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
     qdrant_collection_name: str = os.getenv("QDRANT_COLLECTION_NAME", "customer_support_docs")
+    # Payload field holding the chunk text. LangChain's Qdrant wrapper defaults to
+    # "page_content"; the security_knowledge_base collection stores it as "text".
+    qdrant_content_payload_key: str = os.getenv("QDRANT_CONTENT_PAYLOAD_KEY", "page_content")
     
     # Pinecone
     pinecone_api_key: str = os.getenv("PINECONE_API_KEY", "")

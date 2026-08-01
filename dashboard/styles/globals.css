@@ -122,14 +122,54 @@ textarea:focus-visible {
 .card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 16px;
   transition: all 0.2s ease;
 }
 
 .card:hover {
   border-color: var(--border-secondary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphic surface */
+.glass {
+  background: rgba(22, 27, 34, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-primary);
+}
+
+/* Gradient text for headers/branding */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-primary), #A371F7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Message bubble polish */
+.message-bubble {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Streaming cursor */
+.streaming-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  margin-left: 2px;
+  background: var(--accent-primary);
+  vertical-align: -2px;
+  border-radius: 1px;
+  animation: blink 0.9s step-start infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Button styles */
@@ -217,6 +257,32 @@ textarea:focus-visible {
 .badge-primary {
   background: rgba(88, 166, 255, 0.15);
   color: var(--accent-primary);
+}
+
+/* Markdown body spacing (global reset zeroes margins on p/ul/ol/etc) */
+.markdown-body p {
+  margin-bottom: 8px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 8px 0;
+  padding-left: 1.5em;
+}
+
+.markdown-body li {
+  margin-bottom: 4px;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  margin: 12px 0 6px;
+  font-weight: 600;
 }
 
 /* Markdown/Code */

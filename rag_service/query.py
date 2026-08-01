@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Qdrant
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -35,6 +35,7 @@ class RAGQueryEngine:
         # LAZY LOAD embeddings and LLM only when needed (to save memory on startup)
         self._embeddings = None
         self._llm = None
+        self._llm_cache: Dict[str, object] = {}
         self._vector_store = None
         self.qdrant_client = None
         
@@ -85,12 +86,12 @@ Helpful Answer:"""
         else:
             raise ValueError(f"Unknown embedding provider: {provider}")
     
-    def _initialize_llm(self):
+    def _initialize_llm(self, model_override: Optional[str] = None, streaming: bool = False):
         """Initialize LLM based on provider"""
         provider = settings.llm_provider.lower()
-        
+
         logger.info(f"Initializing LLM with provider: {provider}")
-        
+
         if provider == "openai":
             if not settings.openai_api_key:
                 raise ValueError("OpenAI API key required. Get one at https://platform.openai.com/api-keys")
@@ -129,16 +130,18 @@ Helpful Answer:"""
         elif provider == "openrouter":
             if not settings.openrouter_api_key:
                 raise ValueError("OpenRouter API key required. Get one at https://openrouter.ai/keys")
-            
-            logger.info(f"Using OpenRouter with model: {settings.openrouter_model}")
+
+            model_name = model_override or settings.openrouter_model
+            logger.info(f"Using OpenRouter with model: {model_name} (streaming={streaming})")
             return ChatOpenAI(
                 openai_api_key=settings.openrouter_api_key,
                 openai_api_base="https://openrouter.ai/api/v1",
-                model=settings.openrouter_model,
+                model=model_name,
                 temperature=settings.temperature,
-                max_tokens=settings.max_tokens
+                max_tokens=settings.max_tokens,
+                streaming=streaming,
             )
-        
+
         else:
             raise ValueError(f"Unknown LLM provider: {provider}. Choose: openai, groq, ollama, or openrouter")
     
@@ -151,11 +154,25 @@ Helpful Answer:"""
     
     @property
     def llm(self):
-        """Lazy load LLM only when first accessed"""
+        """Lazy load default LLM only when first accessed"""
         if self._llm is None:
             self._llm = self._initialize_llm()
         return self._llm
-    
+
+    def _get_llm(self, model_override: Optional[str] = None, streaming: bool = False):
+        """Get an LLM client for a given model/streaming combo, cached per combo."""
+        cache_key = f"{model_override or 'default'}:{streaming}"
+        if cache_key not in self._llm_cache:
+            self._llm_cache[cache_key] = self._initialize_llm(
+                model_override=model_override, streaming=streaming
+            )
+        return self._llm_cache[cache_key]
+
+    def _active_model_name(self, model_override: Optional[str] = None) -> str:
+        if settings.llm_provider == "openrouter":
+            return model_override or settings.openrouter_model
+        return settings.openai_model
+
     @property
     def vector_store(self):
         """Lazy load vector store only when first accessed"""
@@ -178,68 +195,118 @@ Helpful Answer:"""
             self._vector_store = Qdrant(
                 client=self.qdrant_client,
                 collection_name=settings.qdrant_collection_name,
-                embeddings=self.embeddings  # This triggers lazy load
+                embeddings=self.embeddings,  # This triggers lazy load
+                content_payload_key=settings.qdrant_content_payload_key,
             )
     
     async def query(
         self,
         query: str,
         session_id: str,
-        top_k: int = 5
+        top_k: int = 5,
+        model: Optional[str] = None,
     ) -> Dict:
         """
         Process a query through the RAG pipeline
-        
+
         Args:
             query: User's question
             session_id: Session identifier
             top_k: Number of documents to retrieve
-        
+            model: Optional OpenRouter model id override for this request
+
         Returns:
             Dictionary with response, context, and metadata
         """
         try:
-            logger.info(f"Processing query for session {session_id}")
-            
+            logger.info(f"Processing query for session {session_id} with model={model or 'default'}")
+
             # Retrieve relevant documents
             retriever = self.vector_store.as_retriever(
                 search_kwargs={"k": top_k}
             )
-            
+
             # Create RetrievalQA chain
             qa_chain = RetrievalQA.from_chain_type(
-                llm=self.llm,
+                llm=self._get_llm(model_override=model),
                 chain_type="stuff",
                 retriever=retriever,
                 chain_type_kwargs={"prompt": self.PROMPT},
                 return_source_documents=True
             )
-            
+
             # Run the chain
             result = qa_chain({"query": query})
-            
+
             # Extract context from source documents
             context = [doc.page_content for doc in result.get("source_documents", [])]
-            
+
             # Use simple character division for token approximation to avoid OpenAI/Tiktoken network calls
             tokens_used = self._estimate_tokens(query, result["result"], context)
-            
-            # Determine actual model used
-            active_model = settings.openrouter_model if settings.llm_provider == "openrouter" else settings.openai_model
-            
+
+            active_model = self._active_model_name(model)
+
             logger.info(f"Query processed successfully, {len(context)} context docs retrieved")
-            
+
             return {
                 "response": result["result"],
                 "context": context,
                 "model": active_model,
                 "tokens_used": tokens_used
             }
-            
+
         except Exception as e:
             logger.error(f"Error processing query: {e}")
             raise
-    
+
+    async def stream_query(
+        self,
+        query: str,
+        session_id: str,
+        top_k: int = 5,
+        model: Optional[str] = None,
+    ):
+        """
+        Process a query through the RAG pipeline, yielding response text chunks
+        as they arrive, followed by a final dict with context/model/tokens metadata.
+
+        Yields:
+            str chunks of the response, then a single Dict as the last item
+        """
+        try:
+            logger.info(f"Streaming query for session {session_id} with model={model or 'default'}")
+
+            retriever = self.vector_store.as_retriever(search_kwargs={"k": top_k})
+            source_docs = await retriever.ainvoke(query)
+            context = [doc.page_content for doc in source_docs]
+
+            prompt_text = self.PROMPT.format(
+                context="\n\n".join(context),
+                question=query,
+            )
+
+            llm = self._get_llm(model_override=model, streaming=True)
+
+            full_response = ""
+            async for chunk in llm.astream(prompt_text):
+                token = chunk.content or ""
+                if token:
+                    full_response += token
+                    yield token
+
+            tokens_used = self._estimate_tokens(query, full_response, context)
+            active_model = self._active_model_name(model)
+
+            yield {
+                "context": context,
+                "model": active_model,
+                "tokens_used": tokens_used,
+            }
+
+        except Exception as e:
+            logger.error(f"Error streaming query: {e}")
+            raise
+
     def _estimate_tokens(self, query: str, response: str, context: List[str]) -> int:
         """Estimate token usage using a simple character division to avoid external network calls."""
         try:

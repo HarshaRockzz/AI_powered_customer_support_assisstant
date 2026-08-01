@@ -1,18 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { 
+import { getModels, ModelOption } from '../lib/api';
+import {
   Cog6ToothIcon,
   BellIcon,
   ShieldCheckIcon,
   KeyIcon,
   ServerIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  CpuChipIcon
 } from '@heroicons/react/24/outline';
 
 export default function Settings() {
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [defaultModel, setDefaultModel] = useState('');
+  const [modelsLoading, setModelsLoading] = useState(true);
+
+  useEffect(() => {
+    const storedModel = typeof window !== 'undefined' ? localStorage.getItem('selected_model') : null;
+
+    getModels()
+      .then((res) => {
+        setModels(res.models || []);
+        setDefaultModel(storedModel || res.default_model);
+      })
+      .catch((error) => console.error('Failed to load models:', error))
+      .finally(() => setModelsLoading(false));
+  }, []);
+
+  const handleSelectModel = (modelId: string) => {
+    setDefaultModel(modelId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selected_model', modelId);
+    }
+  };
 
   const handleSave = () => {
     // Simulate save
@@ -101,13 +125,50 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Model Picker */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <CpuChipIcon className="w-6 h-6 text-[var(--accent-primary)]" />
+            <h3 className="text-lg font-semibold">Default Chat Model</h3>
+          </div>
+
+          {modelsLoading ? (
+            <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <div className="spinner"></div>
+              Loading free models...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {models.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleSelectModel(m.id)}
+                  className={`text-left p-3 rounded-lg border transition-all ${
+                    m.id === defaultModel
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
+                      : 'border-[var(--border-primary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{m.label}</span>
+                    {m.id === defaultModel && <CheckCircleIcon className="w-4 h-4 text-[var(--accent-primary)]" />}
+                  </div>
+                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
+                    {m.context_length.toLocaleString()} ctx · free
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* System Information */}
         <div className="card">
           <div className="flex items-center gap-3 mb-4">
             <ServerIcon className="w-6 h-6 text-[var(--accent-primary)]" />
             <h3 className="text-lg font-semibold">System Information</h3>
           </div>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between py-2 border-b border-[var(--border-primary)]">
               <span className="text-[var(--text-secondary)]">Version</span>
@@ -119,11 +180,11 @@ export default function Settings() {
             </div>
             <div className="flex justify-between py-2 border-b border-[var(--border-primary)]">
               <span className="text-[var(--text-secondary)]">LLM Provider</span>
-              <span className="font-medium">Groq (llama-3.1-70b)</span>
+              <span className="font-medium">OpenRouter (free models)</span>
             </div>
             <div className="flex justify-between py-2 border-b border-[var(--border-primary)]">
               <span className="text-[var(--text-secondary)]">Embeddings</span>
-              <span className="font-medium">OpenAI (text-embedding-3-small)</span>
+              <span className="font-medium">OpenRouter (nemotron-embed-vl-1b-v2, 2048-dim)</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-[var(--text-secondary)]">Vector Database</span>

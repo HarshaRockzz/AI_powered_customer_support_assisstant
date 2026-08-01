@@ -33,7 +33,7 @@ export default function Layout({ children, title }: LayoutProps) {
         } transition-all duration-300 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col overflow-hidden`}
       >
         <div className="p-4 border-b border-[var(--border-primary)]">
-          <div className="font-semibold text-lg">AI Support</div>
+          <div className="font-semibold text-lg gradient-text">AI Support</div>
           <div className="text-xs text-[var(--text-tertiary)] mt-1">Admin Dashboard</div>
         </div>
 
@@ -60,7 +60,7 @@ export default function Layout({ children, title }: LayoutProps) {
         <div className="p-4 border-t border-[var(--border-primary)]">
           <div className="text-xs text-[var(--text-tertiary)]">
             <div className="font-semibold text-[var(--text-primary)] mb-1">AI Support Assistant</div>
-            <div>Powered by Groq & Next.js</div>
+            <div>Powered by OpenRouter & Next.js</div>
           </div>
         </div>
       </div>

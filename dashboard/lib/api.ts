@@ -21,6 +21,8 @@ export interface QueryRequest {
   query: string;
   session_id: string;
   user_id?: string;
+  model?: string;
+  stream?: boolean;
 }
 
 export interface QueryResponse {
@@ -33,6 +35,18 @@ export interface QueryResponse {
   latency_ms: number;
   cache_hit: boolean;
   timestamp: string;
+}
+
+export interface ModelOption {
+  id: string;
+  label: string;
+  context_length: number;
+}
+
+export interface ModelsResponse {
+  provider: string;
+  default_model: string;
+  models: ModelOption[];
 }
 
 export interface FeedbackRequest {
@@ -105,6 +119,73 @@ export const getDocuments = async (limit: number = 50, offset: number = 0): Prom
 export const getHealth = async (): Promise<any> => {
   const response = await api.get('/api/health');
   return response.data;
+};
+
+export const getModels = async (): Promise<ModelsResponse> => {
+  const response = await api.get('/api/models');
+  return response.data;
+};
+
+/**
+ * Streams a query response token-by-token via SSE using fetch + ReadableStream
+ * (axios doesn't handle SSE well). Calls onToken for each text chunk, and
+ * onDone once with the final metadata (context/model/tokens_used).
+ */
+export const streamQuery = async (
+  request: QueryRequest,
+  onToken: (token: string) => void,
+  onDone: (meta: { context: string[]; model: string; tokens_used: number }) => void,
+  onError?: (error: Error) => void
+): Promise<void> => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...request, stream: true }),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Stream request failed with status ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || '';
+
+      for (const rawEvent of events) {
+        if (!rawEvent.trim()) continue;
+
+        const lines = rawEvent.split('\n');
+        let eventType = 'message';
+        let data = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+          if (line.startsWith('data: ')) data = line.slice(6);
+        }
+        if (!data) continue;
+
+        const parsed = JSON.parse(data);
+        if (eventType === 'done') {
+          onDone(parsed);
+        } else if (eventType === 'error') {
+          throw new Error(parsed.error || 'Unknown streaming error');
+        } else if (parsed.token) {
+          onToken(parsed.token);
+        }
+      }
+    }
+  } catch (error) {
+    if (onError) onError(error as Error);
+    else throw error;
+  }
 };
 
 export default api;

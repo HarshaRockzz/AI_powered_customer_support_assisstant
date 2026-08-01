@@ -31,6 +31,7 @@ type RAGQueryRequest struct {
 	Query     string `json:"query"`
 	SessionID string `json:"session_id"`
 	TopK      int    `json:"top_k"`
+	Model     string `json:"model,omitempty"`
 }
 
 // RAGQueryResponse represents the response from RAG service
@@ -67,6 +68,7 @@ func (s *QueryService) ProcessQuery(ctx context.Context, req models.QueryRequest
 		Query:     req.Query,
 		SessionID: req.SessionID,
 		TopK:      5,
+		Model:     req.Model,
 	}
 
 	ragResp, err := s.callRAGService(ctx, ragReq)
@@ -159,6 +161,98 @@ func (s *QueryService) callRAGService(ctx context.Context, req RAGQueryRequest) 
 	}
 
 	return &ragResp, nil
+}
+
+// StreamQuery proxies a streaming query to the RAG service and pipes the SSE
+// response straight through to the client. Bypasses the Redis query cache
+// since streamed responses aren't cached.
+func (s *QueryService) StreamQuery(ctx context.Context, req models.QueryRequest, w http.ResponseWriter) error {
+	ragReq := RAGQueryRequest{
+		Query:     req.Query,
+		SessionID: req.SessionID,
+		TopK:      5,
+		Model:     req.Model,
+	}
+
+	jsonData, err := json.Marshal(ragReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/rag/query/stream", s.cfg.RAGServiceURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("failed to call RAG service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("RAG service returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.WriteHeader(http.StatusOK)
+
+	flusher, canFlush := w.(http.Flusher)
+
+	buf := make([]byte, 4096)
+	for {
+		n, readErr := resp.Body.Read(buf)
+		if n > 0 {
+			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				return writeErr
+			}
+			if canFlush {
+				flusher.Flush()
+			}
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				return nil
+			}
+			return readErr
+		}
+	}
+}
+
+// GetModels fetches the list of available free chat models from the RAG service
+func (s *QueryService) GetModels(ctx context.Context) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/rag/models", s.cfg.RAGServiceURL)
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call RAG service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("RAG service returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
 }
 
 // formatContext converts context array to JSON string

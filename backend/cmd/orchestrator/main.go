@@ -134,6 +134,7 @@ func setupRoutes(
 	{
 		// Query endpoints
 		api.POST("/query", queryHandler.HandleQuery)
+		api.GET("/models", queryHandler.HandleGetModels)
 
 		// Feedback endpoints
 		api.POST("/feedback", feedbackHandler.HandleSubmitFeedback)

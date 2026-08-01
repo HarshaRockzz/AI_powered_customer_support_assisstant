@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
       POSTGRES_DB: ${POSTGRES_DB:-ai_support}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
@@ -94,12 +94,12 @@ services:
     environment:
       # LLM Provider Selection
       - LLM_PROVIDER=${LLM_PROVIDER:-openrouter}
-      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openrouter}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-huggingface}
 
       # OpenRouter
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-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}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-meta-llama/llama-3-8b-instruct}
-      - OPENROUTER_EMBEDDING_MODEL=${OPENROUTER_EMBEDDING_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      - OPENROUTER_EMBEDDING_MODEL=${OPENROUTER_EMBEDDING_MODEL:-}
 
       # OpenAI (optional)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}

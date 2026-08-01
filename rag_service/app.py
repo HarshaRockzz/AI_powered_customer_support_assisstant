@@ -1,5 +1,8 @@
+import json
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
@@ -44,6 +47,7 @@ class QueryRequest(BaseModel):
     query: str
     session_id: str
     top_k: Optional[int] = 5
+    model: Optional[str] = None
 
 
 class QueryResponse(BaseModel):
@@ -153,26 +157,63 @@ async def query_rag(request: QueryRequest):
     """
     try:
         logger.info(f"Processing query: {request.query[:100]}...")
-        
+
         # Process query through RAG pipeline
         result = await query_engine.query(
             query=request.query,
             session_id=request.session_id,
-            top_k=request.top_k
+            top_k=request.top_k,
+            model=request.model,
         )
-        
+
         logger.info(f"Query processed successfully, tokens used: {result['tokens_used']}")
-        
+
         return QueryResponse(
             response=result["response"],
             context=result["context"],
             model=result["model"],
             tokens_used=result["tokens_used"]
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to process query: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
+
+
+@app.post("/rag/query/stream")
+async def query_rag_stream(request: QueryRequest):
+    """
+    Query the RAG system, streaming the response as Server-Sent Events.
+    Emits `data: <token>` lines as text arrives, then a final
+    `event: done` line with a JSON payload of context/model/tokens_used.
+    """
+    async def event_generator():
+        try:
+            async for chunk in query_engine.stream_query(
+                query=request.query,
+                session_id=request.session_id,
+                top_k=request.top_k,
+                model=request.model,
+            ):
+                if isinstance(chunk, str):
+                    yield f"data: {json.dumps({'token': chunk})}\n\n"
+                else:
+                    yield f"event: done\ndata: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            logger.error(f"Failed to stream query: {e}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.get("/rag/models")
+async def get_models():
+    """List free OpenRouter chat models available for selection."""
+    return {
+        "provider": settings.llm_provider,
+        "default_model": settings.openrouter_model,
+        "models": settings.openrouter_free_models,
+    }
 
 
 @app.post("/rag/retrain")

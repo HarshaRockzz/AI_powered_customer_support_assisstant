@@ -66,6 +66,7 @@ type QueryRequest struct {
 	Query     string `json:"query" binding:"required"`
 	SessionID string `json:"session_id" binding:"required"`
 	UserID    string `json:"user_id,omitempty"`
+	Model     string `json:"model,omitempty"`
 	Stream    bool   `json:"stream,omitempty"`
 }
 
