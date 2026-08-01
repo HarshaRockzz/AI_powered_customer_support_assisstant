@@ -20,8 +20,8 @@ def ping(name, url):
 
 
 def main():
-    backend_url = os.environ.get('BACKEND_URL', '').rstrip('/')
-    rag_url = os.environ.get('RAG_URL', '').rstrip('/')
+    backend_url = os.environ.get('BACKEND_URL', '').strip().rstrip('/')
+    rag_url = os.environ.get('RAG_URL', '').strip().rstrip('/')
 
     if not backend_url or not rag_url:
         print("Error: BACKEND_URL and RAG_URL environment variables must be set.")
