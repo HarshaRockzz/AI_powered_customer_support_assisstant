@@ -235,7 +235,7 @@ func (s *QueryService) GetModels(ctx context.Context) (map[string]interface{}, e
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call RAG service: %w", err)

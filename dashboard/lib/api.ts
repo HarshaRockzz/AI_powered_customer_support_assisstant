@@ -121,9 +121,17 @@ export const getHealth = async (): Promise<any> => {
   return response.data;
 };
 
-export const getModels = async (): Promise<ModelsResponse> => {
-  const response = await api.get('/api/models');
-  return response.data;
+export const getModels = async (retries: number = 2): Promise<ModelsResponse> => {
+  try {
+    const response = await api.get('/api/models');
+    return response.data;
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return getModels(retries - 1);
+    }
+    throw error;
+  }
 };
 
 /**
