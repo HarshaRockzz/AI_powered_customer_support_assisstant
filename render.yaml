@@ -36,7 +36,7 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: google/gemma-4-31b-it:free
+        value: openai/gpt-oss-20b:free
       - key: OPENROUTER_EMBEDDING_MODEL
         value: nvidia/llama-nemotron-embed-vl-1b-v2:free
       - key: VECTOR_DB
