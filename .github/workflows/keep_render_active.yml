@@ -1,0 +1,34 @@
+# Keep the Render backend and RAG service warm by pinging their health
+# endpoints every 10 minutes. Render free-tier services spin down after
+# ~15 minutes of no traffic and take 30-50s to wake up on the next request,
+# which is what was causing the model picker to fail/hang on the dashboard.
+#
+# Secrets required: BACKEND_URL, RAG_URL (e.g. https://ai-support-backend-z4eq.onrender.com)
+
+name: Keep Render Services Active
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Ping Render services
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          RAG_URL: ${{ secrets.RAG_URL }}
+        run: python scripts/ping_render.py
