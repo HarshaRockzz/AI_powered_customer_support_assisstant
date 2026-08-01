@@ -1,8 +1,12 @@
 import '../styles/globals.css';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
   return (
     <>
       <Head>
@@ -20,7 +24,17 @@ export default function App({ Component, pageProps }: AppProps) {
         {/* Apple Touch Icon */}
         <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23667eea;stop-opacity:1' /><stop offset='100%' style='stop-color:%23f093fb;stop-opacity:1' /></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23grad)'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>✨</text></svg>" />
       </Head>
-      <Component {...pageProps} />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={router.pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <Component {...pageProps} />
+        </motion.div>
+      </AnimatePresence>
     </>
   );
 }

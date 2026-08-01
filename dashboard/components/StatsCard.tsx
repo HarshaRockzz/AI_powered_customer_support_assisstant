@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import Card from './Card';
 
 interface StatsCardProps {
   title: string;
@@ -10,13 +12,20 @@ interface StatsCardProps {
 
 export default function StatsCard({ title, value, icon, change, changeType = 'neutral' }: StatsCardProps) {
   return (
-    <div className="card">
+    <Card hover>
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-sm text-[var(--text-secondary)] mb-1">{title}</div>
-          <div className="text-2xl font-semibold text-[var(--text-primary)]">{value}</div>
+          <div className="text-sm text-[var(--text-secondary)] mb-1.5">{title}</div>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="text-2xl font-bold text-[var(--text-primary)] tracking-tight"
+          >
+            {value}
+          </motion.div>
           {change && (
-            <div className={`text-sm mt-1 ${
+            <div className={`text-xs font-medium mt-1.5 ${
               changeType === 'positive' ? 'text-[var(--accent-success)]' :
               changeType === 'negative' ? 'text-[var(--accent-danger)]' :
               'text-[var(--text-tertiary)]'
@@ -25,10 +34,13 @@ export default function StatsCard({ title, value, icon, change, changeType = 'ne
             </div>
           )}
         </div>
-        <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg text-[var(--accent-primary)]">
+        <div
+          className="p-2.5 rounded-[var(--radius-md)]"
+          style={{ background: 'rgba(91, 140, 255, 0.1)', color: 'var(--accent-primary)' }}
+        >
           {icon}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 interface ChatInputProps {
@@ -8,6 +9,7 @@ interface ChatInputProps {
 
 export default function ChatInput({ onSubmit, disabled }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const [focused, setFocused] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,26 +28,44 @@ export default function ChatInput({ onSubmit, disabled }: ChatInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        placeholder="Send a message..."
-        rows={1}
-        className="w-full resize-none bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-xl px-4 py-3 pr-12 focus:outline-none focus:border-[var(--accent-primary)] placeholder-[var(--text-tertiary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      <div
+        className="rounded-[var(--radius-lg)] transition-all duration-200"
         style={{
-          minHeight: '52px',
-          maxHeight: '200px',
+          boxShadow: focused
+            ? '0 0 0 3px rgba(91, 140, 255, 0.14), var(--shadow-md)'
+            : 'var(--shadow-sm)',
         }}
-      />
-      <button
+      >
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          disabled={disabled}
+          placeholder="Send a message..."
+          rows={1}
+          className="w-full resize-none bg-[var(--bg-tertiary)] text-[var(--text-primary)] border rounded-[var(--radius-lg)] px-4 py-3.5 pr-14 focus:outline-none placeholder-[var(--text-tertiary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          style={{
+            minHeight: '54px',
+            maxHeight: '200px',
+            borderColor: focused ? 'var(--border-focus)' : 'var(--border-primary)',
+          }}
+        />
+      </div>
+      <motion.button
         type="submit"
         disabled={!input.trim() || disabled}
-        className="absolute right-2 bottom-2 p-2 bg-[var(--accent-primary)] hover:bg-[#4897E8] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--accent-primary)] transition-all"
+        whileHover={input.trim() && !disabled ? { scale: 1.05 } : undefined}
+        whileTap={input.trim() && !disabled ? { scale: 0.92 } : undefined}
+        className="absolute right-2.5 bottom-2.5 p-2.5 text-white rounded-[var(--radius-sm)] disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
+        style={{
+          background: input.trim() && !disabled ? 'var(--gradient-brand)' : 'var(--bg-hover)',
+          boxShadow: input.trim() && !disabled ? 'var(--shadow-glow)' : 'none',
+        }}
       >
-        <PaperAirplaneIcon className="w-5 h-5" />
-      </button>
+        <PaperAirplaneIcon className="w-4.5 h-4.5" style={{ width: 17, height: 17 }} />
+      </motion.button>
     </form>
   );
 }

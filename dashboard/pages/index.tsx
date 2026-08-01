@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
+import { AnimatePresence, motion } from 'framer-motion';
+import Layout from '../components/Layout';
+import Button from '../components/Button';
 import ChatMessage from '../components/ChatMessage';
 import ChatInput from '../components/ChatInput';
 import { submitFeedback, streamQuery, getModels, ModelOption } from '../lib/api';
 import { getSessionId } from '../lib/utils';
-import {
-  Bars3Icon,
-  PlusIcon,
-  ChatBubbleLeftIcon,
-  ChartBarIcon,
-  DocumentTextIcon,
-  Cog6ToothIcon,
-  ChevronDownIcon,
-} from '@heroicons/react/24/outline';
+import { PlusIcon, ChevronDownIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 
 interface Message {
   id: string;
@@ -32,11 +26,9 @@ const WELCOME_MESSAGE: Message = {
 };
 
 export default function Home() {
-  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -170,117 +162,77 @@ export default function Home() {
     ]);
   };
 
-  return (
-    <div className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-      {/* Sidebar */}
-      <div
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-0'
-        } transition-all duration-300 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col overflow-hidden`}
-      >
-        <div className="p-4 border-b border-[var(--border-primary)]">
-          <button
-            onClick={newChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] border border-[var(--border-primary)] rounded-lg transition-all"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span className="font-medium">New Chat</span>
-          </button>
-        </div>
+  const headerActions = (
+    <motion.div
+      key="chat-header-actions"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex items-center gap-2"
+    >
+      <Button variant="ghost" size="sm" icon={<PlusIcon className="w-4 h-4" />} onClick={newChat}>
+        New chat
+      </Button>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <button
-            onClick={() => router.push('/')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[var(--bg-hover)] text-[var(--text-primary)]"
-          >
-            <ChatBubbleLeftIcon className="w-5 h-5" />
-            <span>Chat</span>
-          </button>
-          <button
-            onClick={() => router.push('/analytics')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors"
-          >
-            <ChartBarIcon className="w-5 h-5" />
-            <span>Analytics</span>
-          </button>
-          <button
-            onClick={() => router.push('/documents')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors"
-          >
-            <DocumentTextIcon className="w-5 h-5" />
-            <span>Documents</span>
-          </button>
-          <button
-            onClick={() => router.push('/settings')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors"
-          >
-            <Cog6ToothIcon className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
-        </nav>
+      <div className="relative">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<CpuChipIcon className="w-4 h-4 text-[var(--accent-primary)]" />}
+          onClick={() => setModelMenuOpen((v) => !v)}
+        >
+          {models.find((m) => m.id === selectedModel)?.label || 'Select model'}
+          <ChevronDownIcon className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
+        </Button>
 
-        <div className="p-4 border-t border-[var(--border-primary)]">
-          <div className="text-xs text-[var(--text-tertiary)]">
-            <div className="font-semibold text-[var(--text-primary)] mb-1">AI Support Assistant</div>
-            <div>Powered by OpenRouter & Next.js</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="h-14 border-b border-[var(--border-primary)] flex items-center px-4 gap-3">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
-          >
-            <Bars3Icon className="w-5 h-5" />
-          </button>
-          <div className="text-sm font-medium">Customer Support Chat</div>
-
-          <div className="ml-auto relative">
-            <button
-              onClick={() => setModelMenuOpen((v) => !v)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+        <AnimatePresence>
+          {modelMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto surface shadow-[var(--shadow-lg)] z-20 p-1.5"
             >
-              <span className="font-medium">
-                {models.find((m) => m.id === selectedModel)?.label || 'Select model'}
-              </span>
-              <ChevronDownIcon className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
-            </button>
+              {models.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleSelectModel(m.id)}
+                  className={`w-full text-left px-3 py-2.5 text-xs rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors ${
+                    m.id === selectedModel ? 'bg-[rgba(91,140,255,0.1)]' : ''
+                  }`}
+                >
+                  <div className={`font-medium ${m.id === selectedModel ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
+                    {m.label}
+                  </div>
+                  <div className="text-[var(--text-tertiary)] mt-0.5">
+                    {m.context_length.toLocaleString()} ctx · free
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
 
-            {modelMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 max-h-80 overflow-y-auto bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10 animate-fade-in">
-                {models.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => handleSelectModel(m.id)}
-                    className={`w-full text-left px-3 py-2.5 text-xs hover:bg-[var(--bg-hover)] transition-colors ${
-                      m.id === selectedModel ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                    }`}
-                  >
-                    <div className="font-medium">{m.label}</div>
-                    <div className="text-[var(--text-tertiary)]">{m.context_length.toLocaleString()} ctx · free</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </header>
-
+  return (
+    <Layout title="Customer Support Chat" headerActions={headerActions}>
+      <div className="flex flex-col h-full">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 py-6">
-            {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                onFeedback={handleFeedback}
-                onRegenerate={message.sourceQuery ? handleRegenerate : undefined}
-                isStreaming={loading && message.id === messages[messages.length - 1].id}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  onFeedback={handleFeedback}
+                  onRegenerate={message.sourceQuery ? handleRegenerate : undefined}
+                  isStreaming={loading && message.id === messages[messages.length - 1].id}
+                />
+              ))}
+            </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -298,6 +250,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../components/Layout';
-import { 
+import Card from '../components/Card';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
+import { SkeletonRow } from '../components/Skeleton';
+import {
   ArrowUpTrayIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   DocumentTextIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import { getDocuments, uploadDocument } from '../lib/api';
 import { formatDate } from '../lib/utils';
@@ -16,6 +21,7 @@ export default function Documents() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
+  const [uploadOk, setUploadOk] = useState(true);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,12 +48,14 @@ export default function Documents() {
 
     try {
       const response = await uploadDocument(file);
-      setUploadMessage(`✅ ${response.message}`);
+      setUploadOk(true);
+      setUploadMessage(response.message);
       setTimeout(() => {
         loadDocuments();
       }, 2000);
     } catch (error: any) {
-      setUploadMessage(`❌ Error: ${error.message || 'Upload failed'}`);
+      setUploadOk(false);
+      setUploadMessage(error.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -79,35 +87,25 @@ export default function Documents() {
     }
   };
 
-  if (loading) {
-    return (
-      <Layout title="Documents">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="spinner mx-auto mb-4"></div>
-            <div className="text-[var(--text-secondary)]">Loading documents...</div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout title="Documents">
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 max-w-[1400px]">
         {/* Upload Section */}
-        <div className="card">
+        <Card>
           <div className="mb-4">
-            <h3 className="text-lg font-semibold">Upload Document</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">Upload PDFs, text files, or markdown documents to enhance AI knowledge</p>
+            <h3 className="text-base font-semibold">Upload Document</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+              Upload PDFs, text files, or markdown documents to enhance AI knowledge
+            </p>
           </div>
 
-          <div
-            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive
-                ? 'border-[var(--accent-primary)] bg-[var(--bg-tertiary)]'
-                : 'border-[var(--border-primary)] hover:border-[var(--accent-primary)]'
-            }`}
+          <motion.div
+            animate={{
+              borderColor: dragActive ? 'var(--accent-primary)' : 'var(--border-primary)',
+              scale: dragActive ? 1.01 : 1,
+            }}
+            className="relative border-2 border-dashed rounded-[var(--radius-lg)] p-10 text-center transition-colors"
+            style={{ background: dragActive ? 'rgba(91, 140, 255, 0.05)' : 'transparent' }}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -122,84 +120,104 @@ export default function Documents() {
               disabled={uploading}
             />
 
-            <CloudArrowUpIcon className="w-12 h-12 mx-auto text-[var(--text-secondary)] mb-4" />
-            
-            <div className="text-[var(--text-primary)] font-medium mb-2">
+            <motion.div
+              animate={{ y: dragActive ? -4 : 0 }}
+              className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4"
+              style={{ background: 'rgba(91, 140, 255, 0.1)', color: 'var(--accent-primary)' }}
+            >
+              <CloudArrowUpIcon className="w-7 h-7" />
+            </motion.div>
+
+            <div className="text-[var(--text-primary)] font-medium mb-1.5">
               {uploading ? 'Uploading...' : 'Drop files here or click to upload'}
             </div>
-            
-            <div className="text-sm text-[var(--text-secondary)] mb-4">
+
+            <div className="text-sm text-[var(--text-tertiary)] mb-5">
               Supported formats: PDF, TXT, MD, CSV
             </div>
 
-            {!uploading && (
-              <button
+            {!uploading ? (
+              <Button
+                variant="primary"
+                icon={<ArrowUpTrayIcon className="w-4 h-4" />}
                 onClick={() => fileInputRef.current?.click()}
-                className="btn-primary"
               >
-                <ArrowUpTrayIcon className="w-5 h-5 inline-block mr-2" />
                 Select File
-              </button>
-            )}
-
-            {uploading && (
-              <div className="flex items-center justify-center gap-2">
-                <div className="spinner"></div>
-                <span className="text-sm">Processing...</span>
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-sm text-[var(--text-secondary)]">
+                <div className="spinner" />
+                <span>Processing...</span>
               </div>
             )}
-          </div>
+          </motion.div>
 
-          {uploadMessage && (
-            <div className={`mt-4 p-3 rounded-lg ${
-              uploadMessage.startsWith('✅')
-                ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-                : 'bg-red-500/10 text-red-500 border border-red-500/20'
-            }`}>
-              {uploadMessage}
-            </div>
-          )}
-        </div>
+          <AnimatePresence>
+            {uploadMessage && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`mt-4 p-3 rounded-[var(--radius-sm)] text-sm ${
+                  uploadOk
+                    ? 'bg-[rgba(61,220,132,0.1)] text-[var(--accent-success)] border border-[rgba(61,220,132,0.2)]'
+                    : 'bg-[rgba(255,107,107,0.1)] text-[var(--accent-danger)] border border-[rgba(255,107,107,0.2)]'
+                }`}
+              >
+                {uploadOk ? <CheckCircleIcon className="w-4 h-4 inline mr-1.5 -mt-0.5" /> : <XCircleIcon className="w-4 h-4 inline mr-1.5 -mt-0.5" />}
+                {uploadMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
 
         {/* Documents List */}
-        <div className="card">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold">Uploaded Documents</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">Documents that power the AI assistant</p>
+        <Card padding="none">
+          <div className="p-5 pb-4">
+            <h3 className="text-base font-semibold">Uploaded Documents</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Documents that power the AI assistant</p>
           </div>
 
-          {documents.length === 0 ? (
-            <div className="text-center py-12">
-              <DocumentTextIcon className="w-12 h-12 mx-auto text-[var(--text-secondary)] mb-4" />
-              <div className="text-[var(--text-secondary)]">No documents uploaded yet</div>
-              <div className="text-sm text-[var(--text-tertiary)] mt-1">Upload your first document to get started</div>
+          {loading ? (
+            <div className="divide-y divide-[var(--border-primary)]">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
             </div>
+          ) : documents.length === 0 ? (
+            <EmptyState
+              icon={<DocumentTextIcon className="w-6 h-6" />}
+              title="No documents uploaded yet"
+              description="Upload your first document to get started."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-[var(--border-primary)]">
+                <thead className="border-t border-b border-[var(--border-primary)]">
                   <tr>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Type</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Uploaded</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Name</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Type</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Status</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Uploaded</th>
                   </tr>
                 </thead>
                 <tbody>
                   {documents.map((doc, index) => (
-                    <tr key={index} className="border-b border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                      <td className="py-3 px-4">
+                    <tr key={index} className="border-b border-[var(--border-primary)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                      <td className="py-3 px-5">
                         <div className="flex items-center gap-3">
-                          <DocumentTextIcon className="w-5 h-5 text-[var(--accent-primary)]" />
-                          <span className="text-sm">{doc.filename || doc.name || 'Untitled'}</span>
+                          <div className="p-1.5 rounded-[var(--radius-sm)]" style={{ background: 'var(--bg-tertiary)' }}>
+                            <DocumentTextIcon className="w-4 h-4 text-[var(--accent-primary)]" />
+                          </div>
+                          <span className="text-sm font-medium">{doc.filename || doc.name || 'Untitled'}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <span className="text-sm text-[var(--text-secondary)]">
+                      <td className="py-3 px-5">
+                        <span className="text-sm text-[var(--text-secondary)] uppercase">
                           {doc.file_type || doc.type || 'Unknown'}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-5">
                         <span className={`badge ${
                           doc.status === 'processed' ? 'badge-success' :
                           doc.status === 'failed' ? 'badge-danger' :
@@ -211,7 +229,7 @@ export default function Documents() {
                           {doc.status || 'Unknown'}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-5">
                         <span className="text-sm text-[var(--text-secondary)]">
                           {doc.created_at ? formatDate(doc.created_at) : 'Unknown'}
                         </span>
@@ -222,7 +240,7 @@ export default function Documents() {
               </table>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </Layout>
   );
